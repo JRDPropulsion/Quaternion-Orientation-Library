@@ -7,8 +7,6 @@
 
 #include "Arduino.h"
 #include "Orientation.h"
-#include "BNO055.h"
-#include <tuple>
 
 double q[4] = {1, 0, 0, 0};
 double w[4] = {0, 0, 0, 0};
@@ -17,49 +15,40 @@ double a[4] = {0, 0, 0, 0};
 
 double Orientation::quaternion_update(double gyro_x, double gyro_y, double gyro_z, double dt, double *px, double *py, double *pz)
 {   
-    double axis_x = gyro_x * dt;
-    double axis_y = gyro_y * dt;
-    double axis_z = gyro_z * dt;
-    
-    //Calulates the normalized quaternion and ensures that the equation never divides by zero by defining a magnitude.
-    double axis_mag = max(1e-12, sqrt((axis_x * axis_x) + (axis_y * axis_y) + (axis_z * axis_z)));
+    // Quaternion magnitude
+    double quat_mag = max(sqrt(abs((gyro_x * gyro_x) + (gyro_y * gyro_y) + (gyro_z * gyro_z))), 1e-12);
+    double theta = quat_mag * dt;
 
     //Definition of Quaternion W. Quaternion W combines gyro measurements to get it in reference to the IMU.
-    w[0] = cos(axis_mag / 2);
-    w[1] = axis_x / axis_mag * sin(axis_mag / 2);
-    w[2] = axis_y / axis_mag * sin(axis_mag / 2);
-    w[3] = axis_z / axis_mag * sin(axis_mag / 2);
+    w[0] = cos(theta / 2.0);
+    w[1] = (gyro_x / quat_mag) * sin(theta / 2.0);
+    w[2] = (gyro_y / quat_mag) * sin(theta / 2.0);
+    w[3] = (gyro_z / quat_mag) * sin(theta / 2.0);
     
     //Definition of Quaternion A. Quaternion A is the same as Quaternion Q but in the previous time frame.
     a[0] = q[0];
     a[1] = q[1];
     a[2] = q[2];
     a[3] = q[3];
-    
+
     //Gets the Hamiltion product of quaternion A and quaternion W.
     q[0] = (a[0] * w[0]) - (a[1] * w[1]) - (a[2] * w[2]) - (a[3] * w[3]);
     q[1] = (a[0] * w[1]) + (a[1] * w[0]) + (a[2] * w[3]) - (a[3] * w[2]);
     q[2] = (a[0] * w[2]) - (a[1] * w[3]) + (a[2] * w[0]) + (a[3] * w[1]);
     q[3] = (a[0] * w[3]) + (a[1] * w[2]) - (a[2] * w[1]) + (a[3] * w[0]);
- 
-    double qw = q[0];
-    double qx = q[1];
-    double qy = q[2];
-    double qz = q[3];
 
-    double sinx_cosp = 2 * ((qw * qx) + (qy * qz));
-    double cosx_cosp = 1 - (2 * ((qx * qx) + (qy * qy)));
-    double sinz_cosp = 2 * ((qw * qz) + (qx * qy));
-    double cosz_cosp = 1 - (2 * ((qz * qz) + (qy * qy)));
+    // Calculates the normalized quaternion and ensures that the equation never divides by zero by defining a magnitude.
+    double quat_norm = max(sqrt(abs(q[0] * q[0] + q[1] * q[1] + q[2] * q[2] + q[3] * q[3])), 1e-12); // Guaranteed to be a positive number
 
-    double orientation_x = (180 / PI) * (atan2(sinz_cosp, cosz_cosp));
-    double orientation_y = (180 / PI) * (atan2(sinx_cosp, cosx_cosp));
-    double orientation_z = (180 / PI) * (asin(2 * ((qw * qy) - (qz * qx))));
+    double qw = q[0] / quat_norm;
+    double qx = q[1] / quat_norm;
+    double qy = q[2] / quat_norm;
+    double qz = q[3] / quat_norm;
 
-    *px = orientation_x;
-    *py = orientation_y;
-    *pz = orientation_z;
+    // Quaternion to Euler conversion
+    *px = RAD_TO_DEG * atan2(2.0 * (qw * qx + qy * qz), (qw * qw + qz * qz - qx * qx - qy * qy));
+    *py = RAD_TO_DEG * asin(2.0 * (qw * qy - qx * qz));
+    *pz = RAD_TO_DEG * atan2(2.0 * (qw * qz + qx * qy), qw * qw + qx * qx - qy * qy - qz * qz);
 
     return 0;
 }
-
