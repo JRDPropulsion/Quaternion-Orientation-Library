@@ -21,6 +21,9 @@ Step 2:
 Step 3:
 - Run the example file and the orientation will print to your serial monitor. Depending on yout IMU configuration,
   your roll, pitch, or yaw may have euler singularities at +-90 degrees. This means that if the IMU is rotated and the orientation reaches
-  +-90, the orientation readings will be incorrect. This will be soon fixed in a future update.
+  +-90, the orientation readings will be incorrect. This will be soon fixed in a future update. Also, you need to alighn your axis using 
+  the right hand rule, otherwise it won't work properly. You also need to make sure that you de-roll the output if you need to access the 
+  body frame since the output is in the global frame. So if you are commanding the servos to move in a thrust vector controlled rocket for 
+  example, you need to deroll the output.
 
 
